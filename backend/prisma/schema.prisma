@@ -1,0 +1,488 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SALES
+  STAFF
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum LeadStatus {
+  COLD
+  WARM
+  HOT
+}
+
+enum LeadClassification {
+  COLD
+  WARM
+  HOT
+}
+
+enum LeadStage {
+  LEAD_CAPTURED
+  INITIAL_CONTACT
+  NEEDS_ANALYSIS
+  QUOTATION_SENT
+  NEGOTIATION
+  VERBAL_COMMITMENT
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum FollowUpType {
+  GENERAL_FOLLOW_UP
+  PROJECT_DISCUSSION
+  QUOTATION_FOLLOW_UP
+  MEETING
+  SITE_VISIT
+  TECHNICAL_DISCUSSION
+  SCOPE_FINALIZATION
+  PRICING_DISCUSSION
+  CONTRACT_DISCUSSION
+  PROJECT_KICKOFF
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  CONVERTED
+  LOST
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum ProjectStatus {
+  PLANNING
+  CAPTURE
+  PROCESSING
+  IN_REVIEW
+  DELIVERED
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  VIEWED
+  NEGOTIATION
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id            String      @id @default(uuid())
+  name          String
+  email         String      @unique
+  phone         String?
+  password_hash String      @db.VarChar(255)
+  role          Role        @default(USER)
+  status        UserStatus  @default(ACTIVE)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+
+  // Relationships
+  assigned_customers Customer[]   @relation("AssignedCustomers")
+  assigned_followups FollowUp[]   @relation("AssignedFollowUps")
+  assigned_projects  Project[]    @relation("AssignedProjects")
+  assigned_leads     Lead[]       @relation("AssignedLeads")
+  call_logs          CallLog[]    @relation("UserCallLogs")
+  import_batches     ImportBatch[] @relation("UploadedBatches")
+  audit_logs         AuditLog[]   @relation("UserAuditLogs")
+  quotations         Quotation[]  @relation("UserQuotations")
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([created_at])
+  @@map("users")
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String
+  company     String?
+  website     String?
+  city        String?
+  state       String?
+  pincode     String?
+  address     String?  @db.Text
+  latitude    Float?
+  longitude   Float?
+  map_url     String?  @db.Text
+  source      String?  @default("Website")
+  assigned_to String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relationships
+  assigned_user User?       @relation("AssignedCustomers", fields: [assigned_to], references: [id], onDelete: SetNull)
+  leads         Lead[]
+  call_logs     CallLog[]
+  follow_ups    FollowUp[]
+  enquiries     Enquiry[]
+  bookings      Booking[]
+  projects      Project[]
+  quotations    Quotation[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([assigned_to])
+  @@index([created_at])
+  @@map("customers")
+}
+
+model Lead {
+  id                    String             @id @default(uuid())
+  customer_id           String
+  service_id            String?
+  status                LeadStatus         @default(WARM)
+  classification        LeadClassification @default(WARM)
+  stage                 LeadStage          @default(LEAD_CAPTURED)
+  priority              LeadPriority       @default(MEDIUM)
+  source                String?            @default("Website Enquiry")
+  estimated_deal_value  Decimal?           @db.Decimal(12, 2)
+  closing_probability   Int?               @default(50)
+  expected_closing_date DateTime?          @db.Date
+  final_result          String?
+  lost_reason           String?
+  last_contact_at       DateTime?
+  next_follow_up_at     DateTime?
+  assigned_to           String?
+  notes                 String?            @db.Text
+  created_at            DateTime           @default(now())
+  updated_at            DateTime           @updatedAt
+
+  // Relationships
+  customer              Customer           @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  service               Service?           @relation(fields: [service_id], references: [id], onDelete: SetNull)
+  assigned_user         User?              @relation("AssignedLeads", fields: [assigned_to], references: [id], onDelete: SetNull)
+  call_logs             CallLog[]
+  follow_ups            FollowUp[]
+  quotations            Quotation[]
+
+  @@index([customer_id])
+  @@index([service_id])
+  @@index([status])
+  @@index([classification])
+  @@index([stage])
+  @@index([assigned_to])
+  @@index([created_at])
+  @@map("leads")
+}
+
+model CallLog {
+  id              String     @id @default(uuid())
+  customer_id     String
+  lead_id         String?
+  admin_id        String
+  call_started_at DateTime   @default(now())
+  duration        Int        @default(0) // Duration in seconds
+  outcome         LeadStatus @default(WARM)
+  notes           String?    @db.Text
+  created_at      DateTime   @default(now())
+
+  // Relationships
+  customer        Customer   @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  lead            Lead?      @relation(fields: [lead_id], references: [id], onDelete: SetNull)
+  admin           User       @relation("UserCallLogs", fields: [admin_id], references: [id], onDelete: Cascade)
+
+  @@index([customer_id])
+  @@index([lead_id])
+  @@index([admin_id])
+  @@index([created_at])
+  @@map("call_logs")
+}
+
+model FollowUp {
+  id                      String         @id @default(uuid())
+  customer_id             String
+  lead_id                 String?
+  assigned_to             String?
+  type                    FollowUpType   @default(GENERAL_FOLLOW_UP)
+  purpose                 String?
+  scheduled_date          DateTime       @db.Date
+  scheduled_time          String         // e.g. "11:30 AM" or "14:00"
+  reason                  String?
+  status                  FollowUpStatus @default(PENDING)
+  expected_start_date     DateTime?      @db.Date
+  estimated_project_value Decimal?       @db.Decimal(12, 2)
+  next_action             String?
+  notes                   String?        @db.Text
+  completed_at            DateTime?
+  created_at              DateTime       @default(now())
+  updated_at              DateTime       @updatedAt
+
+  // Relationships
+  customer                Customer       @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  lead                    Lead?          @relation(fields: [lead_id], references: [id], onDelete: SetNull)
+  assigned_user           User?          @relation("AssignedFollowUps", fields: [assigned_to], references: [id], onDelete: SetNull)
+
+  @@index([customer_id])
+  @@index([lead_id])
+  @@index([assigned_to])
+  @@index([scheduled_date])
+  @@index([status])
+  @@index([type])
+  @@index([created_at])
+  @@map("follow_ups")
+}
+
+model Service {
+  id                String        @id @default(uuid())
+  name              String
+  slug              String?       @unique
+  category          String
+  short_description String?       @db.Text
+  description       String?       @db.Text
+  price             Decimal?      @db.Decimal(10, 2)
+  duration          String?
+  image             String?       @db.Text
+  is_active         Boolean       @default(true)
+  is_visible        Boolean       @default(true)
+  is_featured       Boolean       @default(false)
+  display_order     Int           @default(0)
+  status            ServiceStatus @default(ACTIVE)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+
+  // Relationships
+  leads             Lead[]
+  bookings          Booking[]
+  projects          Project[]
+  quotations        Quotation[]
+
+  @@index([category])
+  @@index([status])
+  @@index([is_active])
+  @@index([is_visible])
+  @@index([is_featured])
+  @@index([display_order])
+  @@map("services")
+}
+
+model Enquiry {
+  id               String        @id @default(uuid())
+  customer_id      String
+  project_type     String
+  project_location String?
+  budget           String?
+  description      String?       @db.Text
+  status           EnquiryStatus @default(NEW)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+
+  // Relationships
+  customer         Customer      @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@index([customer_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("enquiries")
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  customer_id  String
+  service_id   String?
+  booking_date DateTime
+  status       BookingStatus @default(PENDING)
+  amount       Decimal?      @db.Decimal(10, 2)
+  notes        String?       @db.Text
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  // Relationships
+  customer     Customer      @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  service      Service?      @relation(fields: [service_id], references: [id], onDelete: SetNull)
+
+  @@index([customer_id])
+  @@index([service_id])
+  @@index([status])
+  @@index([booking_date])
+  @@index([created_at])
+  @@map("bookings")
+}
+
+model Project {
+  id                 String        @id @default(uuid())
+  customer_id        String
+  service_id         String?
+  project_name       String
+  status             ProjectStatus @default(PLANNING)
+  start_date         DateTime?     @db.Date
+  deadline           DateTime?     @db.Date
+  amount             Decimal?      @db.Decimal(10, 2)
+  assigned_to        String?
+  notes              String?       @db.Text
+  is_public          Boolean       @default(false)
+  is_featured        Boolean       @default(false)
+  display_order      Int           @default(0)
+  public_description String?       @db.Text
+  cover_image        String?       @db.Text
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+
+  // Relationships
+  customer           Customer      @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  service            Service?      @relation(fields: [service_id], references: [id], onDelete: SetNull)
+  manager            User?         @relation("AssignedProjects", fields: [assigned_to], references: [id], onDelete: SetNull)
+
+  @@index([customer_id])
+  @@index([service_id])
+  @@index([status])
+  @@index([assigned_to])
+  @@index([is_public])
+  @@index([is_featured])
+  @@index([display_order])
+  @@index([created_at])
+  @@map("projects")
+}
+
+model ImportBatch {
+  id                 String        @id @default(uuid())
+  filename           String
+  uploaded_by        String?
+  total_records      Int           @default(0)
+  successful_records Int           @default(0)
+  duplicate_records  Int           @default(0)
+  failed_records     Int           @default(0)
+  created_at         DateTime      @default(now())
+
+  // Relationships
+  uploader           User?         @relation("UploadedBatches", fields: [uploaded_by], references: [id], onDelete: SetNull)
+  errors             ImportError[]
+
+  @@index([uploaded_by])
+  @@index([created_at])
+  @@map("import_batches")
+}
+
+model ImportError {
+  id            String      @id @default(uuid())
+  batch_id      String
+  row_number    Int
+  raw_data      String?     @db.Text
+  error_message String      @db.Text
+  created_at    DateTime    @default(now())
+
+  // Relationships
+  batch         ImportBatch @relation(fields: [batch_id], references: [id], onDelete: Cascade)
+
+  @@index([batch_id])
+  @@map("import_errors")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user_id     String?
+  action      String   // e.g. "CUSTOMER_CREATED", "LEAD_STATUS_CHANGED", "CALL_LOGGED"
+  entity_type String   // e.g. "Customer", "Lead", "CallLog", "FollowUp"
+  entity_id   String?
+  metadata    String?  @db.Text // JSON string of extra details or state diff
+  created_at  DateTime @default(now())
+
+  // Relationships
+  user        User?    @relation("UserAuditLogs", fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([entity_type])
+  @@index([entity_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+
+model Quotation {
+  id               String          @id @default(uuid())
+  quotation_number String          @unique
+  customer_id      String
+  lead_id          String?
+  service_id       String?
+  status           QuotationStatus @default(DRAFT)
+  items            String          @db.Text // JSON string of items: [{ description, quantity, unit_price, total }]
+  subtotal         Decimal         @db.Decimal(12, 2)
+  discount         Decimal?        @default(0) @db.Decimal(12, 2)
+  tax              Decimal?        @default(0) @db.Decimal(12, 2)
+  total_amount     Decimal         @db.Decimal(12, 2)
+  validity_days    Int             @default(30)
+  valid_until      DateTime?       @db.Date
+  notes            String?         @db.Text
+  terms            String?         @db.Text
+  created_by       String?
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  // Relationships
+  customer         Customer        @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  lead             Lead?           @relation(fields: [lead_id], references: [id], onDelete: SetNull)
+  service          Service?        @relation(fields: [service_id], references: [id], onDelete: SetNull)
+  creator          User?           @relation("UserQuotations", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([customer_id])
+  @@index([lead_id])
+  @@index([service_id])
+  @@index([status])
+  @@index([created_by])
+  @@index([created_at])
+  @@map("quotations")
+}
+
+model WebsiteSetting {
+  key         String   @id
+  value       String   @db.Text
+  category    String?  @default("general")
+  is_public   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([category])
+  @@index([is_public])
+  @@map("website_settings")
+}

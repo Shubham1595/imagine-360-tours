@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /work/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /client
+Disallow: /client/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /api/
+
+Sitemap: https://www.imagine360tours.in/sitemap.xml

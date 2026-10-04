@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+build/
+
+# Uploads & Temporary files
+uploads/
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+
+# IDE / System
+.DS_Store
+.idea/
+.vscode/
