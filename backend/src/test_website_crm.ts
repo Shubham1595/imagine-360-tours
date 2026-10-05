@@ -2,6 +2,11 @@ import { prisma } from './config/db';
 import { isWebsiteColumn, normalizeWebsiteUrl } from './utils/urlParser';
 
 async function runWebsiteCrmTests() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⛔ FATAL: Cannot execute test suites against a PRODUCTION environment.');
+    process.exit(1);
+  }
+
   console.log('====================================================');
   console.log('STARTING IMAGINE 360 CUSTOMER WEBSITE FIELD TEST SUITE');
   console.log('====================================================\n');

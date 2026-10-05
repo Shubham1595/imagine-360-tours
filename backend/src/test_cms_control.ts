@@ -55,6 +55,11 @@ async function request(serverUrl: string, method: string, path: string, headers:
 }
 
 async function runTests() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⛔ FATAL: Cannot execute test suites against a PRODUCTION environment.');
+    process.exit(1);
+  }
+
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log(' PART 4.5 — ADMIN MASTER CONTROL & WEBSITE CMS VERIFICATION');
   console.log('═══════════════════════════════════════════════════════════════════\n');

@@ -2,6 +2,11 @@ import { parseLocationLink, isValidCoordinate, buildGoogleMapsUrl, buildGoogleMa
 import { prisma } from './config/db';
 
 async function runTests() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⛔ FATAL: Cannot execute test suites against a PRODUCTION environment.');
+    process.exit(1);
+  }
+
   console.log('====================================================');
   console.log('STARTING IMAGINE 360 LOCATION & SITE VISIT TEST SUITE');
   console.log('====================================================\n');

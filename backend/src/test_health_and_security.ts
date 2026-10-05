@@ -2,6 +2,11 @@ import { app } from './app';
 import http from 'http';
 
 async function runHealthAndSecurityTests() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⛔ FATAL: Cannot execute test suites against a PRODUCTION environment.');
+    process.exit(1);
+  }
+
   console.log('====================================================');
   console.log('STARTING PRODUCTION HEALTH & SECURITY TEST SUITE');
   console.log('====================================================\n');
@@ -70,7 +75,10 @@ async function runHealthAndSecurityTests() {
   }
 }
 
-runHealthAndSecurityTests().catch((err) => {
-  console.error('Test error:', err);
-  process.exit(1);
-});
+runHealthAndSecurityTests()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('Test error:', err);
+    process.exit(1);
+  });
+

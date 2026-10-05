@@ -31,7 +31,9 @@ export async function register(req: Request, res: Response, next: NextFunction):
         email: data.email.toLowerCase(),
         phone: data.phone || null,
         password_hash,
-        role: data.role || 'USER',
+        // Public registration always assigns standard USER role (clients)
+        // Administrative roles (ADMIN, SALES, STAFF) can only be provisioned by an authenticated ADMIN
+        role: 'USER',
         status: 'ACTIVE',
       },
       select: {

@@ -117,14 +117,22 @@ async function bootstrap() {
   console.log('STARTING PRODUCTION BOOTSTRAP (SUPER_ADMIN & CORE SERVICES)');
   console.log('============================================================\n');
 
-  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@imagine360tours.in').toLowerCase().trim();
+  const adminEmailRaw = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
   const adminName = process.env.ADMIN_NAME || 'Ashish (Super Admin)';
   const adminPhone = process.env.ADMIN_PHONE || '+919561909070';
 
+  if (!adminEmailRaw || !adminEmailRaw.trim()) {
+    console.error('ERROR: ADMIN_EMAIL environment variable is required.');
+    console.error('Example: ADMIN_EMAIL="admin@imagine360tours.in" ADMIN_PASSWORD="<secure-password>" npx tsx src/prisma/bootstrap_admin.ts');
+    process.exit(1);
+  }
+
+  const adminEmail = adminEmailRaw.toLowerCase().trim();
+
   if (!adminPassword || adminPassword.length < 8) {
     console.error('ERROR: ADMIN_PASSWORD environment variable is required and must be at least 8 characters long.');
-    console.error('Example: ADMIN_PASSWORD="your-strong-production-password" npx tsx src/prisma/bootstrap_admin.ts');
+    console.error('Example: ADMIN_EMAIL="admin@imagine360tours.in" ADMIN_PASSWORD="<secure-password>" npx tsx src/prisma/bootstrap_admin.ts');
     process.exit(1);
   }
 
@@ -164,11 +172,11 @@ async function bootstrap() {
   });
 
   if (existingAdmin) {
-    console.log(`   ✔ A SUPER_ADMIN account already exists (${existingAdmin.email}).`);
+    console.log('   ✔ A SUPER_ADMIN account already exists.');
     console.log('   Preserving existing account without modifying credentials.');
   } else {
     const passwordHash = await bcrypt.hash(adminPassword, 10);
-    const newAdmin = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name: adminName,
         email: adminEmail,
@@ -178,7 +186,7 @@ async function bootstrap() {
         status: 'ACTIVE',
       },
     });
-    console.log(`   ✔ Successfully provisioned initial SUPER_ADMIN: ${newAdmin.email}`);
+    console.log('   ✔ Successfully provisioned initial SUPER_ADMIN account.');
   }
 
   console.log('\n============================================================');

@@ -28,6 +28,11 @@ function createMockRes() {
 }
 
 async function runBusinessFlowTests() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⛔ FATAL: Cannot execute test suites against a PRODUCTION environment.');
+    process.exit(1);
+  }
+
   console.log('============================================================');
   console.log('STARTING SECTION 45 CRM BUSINESS WORKFLOW & INTEGRITY TESTS');
   console.log('============================================================\n');

@@ -1,13 +1,23 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../config/db';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
-
 async function main() {
-  console.log('🌱 Starting Imagine 360 Tours database seed...');
+  // CRITICAL SAFETY CHECK: Refuse execution in production environment
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⛔ FATAL: Cannot execute development seed script in a PRODUCTION environment.');
+    console.error('Production databases must be bootstrapped using "npm run bootstrap:admin".');
+    process.exit(1);
+  }
+
+  console.log('🌱 Starting Imagine 360 Tours development database seed...');
+
+  const devAdminPassword = process.env.DEV_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'DevAdmin#2026';
+  const devSalesPassword = process.env.DEV_SALES_PASSWORD || 'DevSales#2026';
+  const devStaffPassword = process.env.DEV_STAFF_PASSWORD || 'DevStaff#2026';
+  const devClientPassword = process.env.DEV_CLIENT_PASSWORD || 'DevClient#2026';
 
   // 1. Create Super Admin User
-  const adminPassword = await bcrypt.hash('Admin@123456', 10);
+  const adminPassword = await bcrypt.hash(devAdminPassword, 10);
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@imagine360tours.in' },
     update: {},
@@ -23,7 +33,7 @@ async function main() {
   console.log('✔ Super Admin created:', superAdmin.email);
 
   // 2. Create Sales Manager User
-  const salesPassword = await bcrypt.hash('Sales@123456', 10);
+  const salesPassword = await bcrypt.hash(devSalesPassword, 10);
   const salesUser = await prisma.user.upsert({
     where: { email: 'sales@imagine360tours.in' },
     update: {},
@@ -38,7 +48,7 @@ async function main() {
   });
 
   // 3. Create Staff User
-  const staffPassword = await bcrypt.hash('Staff@123456', 10);
+  const staffPassword = await bcrypt.hash(devStaffPassword, 10);
   const staffUser = await prisma.user.upsert({
     where: { email: 'staff@imagine360tours.in' },
     update: {},
@@ -53,7 +63,7 @@ async function main() {
   });
 
   // 4. Create Standard Client User
-  const clientPassword = await bcrypt.hash('Client@123456', 10);
+  const clientPassword = await bcrypt.hash(devClientPassword, 10);
   const clientUser = await prisma.user.upsert({
     where: { email: 'client@imagine360tours.in' },
     update: {},
@@ -322,11 +332,11 @@ async function main() {
 
   console.log('✔ Sample CRM verification records populated.');
   console.log('\n==================================================');
-  console.log('🔑 DEFAULT DEVELOPMENT CREDENTIALS:');
-  console.log('Super Admin: admin@imagine360tours.in / Admin@123456');
-  console.log('Sales:       sales@imagine360tours.in / Sales@123456');
-  console.log('Staff:       staff@imagine360tours.in / Staff@123456');
-  console.log('User/Client: client@imagine360tours.in / Client@123456');
+  console.log('🔑 DEVELOPMENT SEED ACCOUNTS CONFIGURED:');
+  console.log('Super Admin: admin@imagine360tours.in (Password configured via DEV_ADMIN_PASSWORD or default)');
+  console.log('Sales:       sales@imagine360tours.in (Password configured via DEV_SALES_PASSWORD or default)');
+  console.log('Staff:       staff@imagine360tours.in (Password configured via DEV_STAFF_PASSWORD or default)');
+  console.log('User/Client: client@imagine360tours.in (Password configured via DEV_CLIENT_PASSWORD or default)');
   console.log('==================================================\n');
 }
 
